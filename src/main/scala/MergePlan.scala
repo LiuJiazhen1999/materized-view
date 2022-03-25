@@ -11,12 +11,14 @@ case class MergePlan() {
     plans.apply(0)
   }
 
-  def prePostProcess(plan1: LogicalPlan, plan2: LogicalPlan): LogicalPlan = {
+  def prePostProcess(originplan1: LogicalPlan, originplan2: LogicalPlan): LogicalPlan = {
+    val plan1 = originplan1
+    val plan2 = originplan2
     catalogRelationMap.clear()
     val exprIdPrefix = "ffaabcde"
     var aliasMap = new scala.collection.mutable.HashMap[Long, Long]
     var maxExprId = 0L
-    plan1 transformUp {
+    var transPlan1 = plan1 transformUp {
       case catalogRelation: CatalogRelation => {
         val output1 = catalogRelation.output
         for(value <- output1) {
@@ -32,8 +34,7 @@ case class MergePlan() {
             aliasMap.put(alias.exprId.id, maxExprId)
             alias.copy(name = exprIdPrefix+(maxExprId))(exprId = alias.exprId.copy(id = maxExprId), qualifier = alias.qualifier, explicitMetadata = alias.explicitMetadata, isGenerated = alias.isGenerated)
           }
-          case attribute: Attribute =>
-            val attributeReference = attribute.asInstanceOf[AttributeReference]
+          case attributeReference: AttributeReference =>
             if (aliasMap.contains(attributeReference.exprId.id)) {
               attributeReference.withName(exprIdPrefix + aliasMap.get(attributeReference.exprId.id)).withExprId(attributeReference.exprId.copy(id = aliasMap.get(attributeReference.exprId.id).getOrElse(attributeReference.exprId.id)))
             } else {
@@ -42,8 +43,7 @@ case class MergePlan() {
         }
       }
     }
-    println(plan2.prettyJson)
-    plan2 transformUp {
+    val transPlan2 = plan2 transformUp {
       case plan => {
         plan transformExpressions {
           case alias: Alias => {
@@ -51,26 +51,17 @@ case class MergePlan() {
             aliasMap.put(alias.exprId.id, maxExprId)
             alias.copy(name = exprIdPrefix+(maxExprId))(exprId = alias.exprId.copy(id = maxExprId), qualifier = alias.qualifier, explicitMetadata = alias.explicitMetadata, isGenerated = alias.isGenerated)
           }
-          case attributeReference: AttributeReference =>
+          case attributeReference: AttributeReference => {
             if (aliasMap.contains(attributeReference.exprId.id)) {
-              attributeReference.withExprId(attributeReference.exprId.copy(id = 999999))
-              //attributeReference.withName(exprIdPrefix + aliasMap.get(attributeReference.exprId.id)).withExprId(attributeReference.exprId.copy(id = aliasMap.get(attributeReference.exprId.id).getOrElse(attributeReference.exprId.id)))
+              attributeReference.withName(exprIdPrefix + aliasMap.get(attributeReference.exprId.id)).withExprId(attributeReference.exprId.copy(id = aliasMap.get(attributeReference.exprId.id).getOrElse(attributeReference.exprId.id)))
             } else {
-             attributeReference.withExprId(attributeReference.exprId.copy(id = 999999))
-              // attributeReference.withExprId(catalogRelationMap.get(attributeReference.qualifier.getOrElse("") + attributeReference.name).getOrElse(attributeReference.exprId))
+              attributeReference.withExprId(catalogRelationMap.get(attributeReference.qualifier.getOrElse("") + attributeReference.name).getOrElse(attributeReference.exprId))
             }
+          }
         }
       }
     }
-    println(plan2.prettyJson)
-    val mergePlan = mergeTwoPlans(plan1 = plan1, plan2 = plan2)
-    mergePlan transformUp {
-      case plan =>
-        plan transformExpressions{
-          case a: AttributeReference =>
-            a.withExprId(a.exprId.copy(id = 99999))
-        }
-    }
+    mergeTwoPlans(plan1 = transPlan1, plan2 = transPlan2)
   }
 
   def mergeTwoPlans(plan1: LogicalPlan, plan2: LogicalPlan): LogicalPlan = {
