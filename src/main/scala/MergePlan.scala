@@ -18,7 +18,7 @@ case class MergePlan() {
     val exprIdPrefix = "ffaabcde"
     var aliasMap = new scala.collection.mutable.HashMap[Long, Long]
     var maxExprId = 0L
-    var transPlan1 = plan1 transformUp {
+    plan1 transformUp {
       case catalogRelation: CatalogRelation => {
         val output1 = catalogRelation.output
         for(value <- output1) {
@@ -27,6 +27,8 @@ case class MergePlan() {
         }
         catalogRelation
       }
+    }
+    val transPlan1 = plan1 transformUp {
       case plan => {
         plan transformExpressions {
           case alias: Alias => {
