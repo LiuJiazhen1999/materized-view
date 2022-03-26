@@ -40,7 +40,7 @@ case class MergePlan() {
             if (aliasMap.contains(attributeReference.exprId.id)) {
               attributeReference.withName(exprIdPrefix + aliasMap.get(attributeReference.exprId.id)).withExprId(attributeReference.exprId.copy(id = aliasMap.get(attributeReference.exprId.id).getOrElse(attributeReference.exprId.id)))
             } else {
-              attributeReference
+              attributeReference.withExprId(catalogRelationMap.get(attributeReference.qualifier.getOrElse("") + attributeReference.name).getOrElse(attributeReference.exprId))
             }
         }
       }
