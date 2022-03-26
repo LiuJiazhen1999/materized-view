@@ -1,5 +1,7 @@
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan;
+import scala.collection.JavaConverters;
+import scala.collection.mutable.Seq;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -56,22 +58,13 @@ public class SqlMerge {
         return similarLogicalPlans;
     }
 
-    /**
-     * 将参数中的多个相似的logicalplan合并成一个logicplan
-     * @param similarLogicalPlans
-     * @return
-     */
-    public LogicalPlan mergeLogicPlan(List<LogicalPlan> similarLogicalPlans) {
-        return null;
-    }
-
     public static void main(String[] args) {
         SqlMerge sqlMerge = new SqlMerge();
         try {
             //sqlMerge.createTable();
             List<LogicalPlan> logicalPlanList = sqlMerge.getLogicalPlansFromFile(filePath);
             MergePlan mergePlan = new MergePlan();
-            LogicalPlan logicalPlan = mergePlan.prePostProcess(logicalPlanList.get(0), logicalPlanList.get(1));
+            LogicalPlan logicalPlan = mergePlan.mergeProcess(JavaConverters.asScalaIteratorConverter(logicalPlanList.iterator()).asScala().toSeq());
             System.out.println(logicalPlan.prettyJson());
             SQLBuilder sqlBuilder = new SQLBuilder(logicalPlan);
             System.out.println(sqlBuilder.toSQL());

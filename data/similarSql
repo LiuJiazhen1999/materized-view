@@ -1,2 +1,3 @@
-select tmp.x + 1 as col from (select (a + b) as x from table2 ) as tmp
-select tmp.x + 1 as col from (select (c + d) as x from table2 ) as tmp
+select a,b from table2
+select b,c from table2
+select c,d from table2

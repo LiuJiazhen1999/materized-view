@@ -9,6 +9,19 @@ case class MergePlan() {
     plans.apply(0)
   }
 
+  def mergeProcess(originPlans: Seq[LogicalPlan]): LogicalPlan = {
+    val plans = ArrayBuffer[LogicalPlan]()
+    for(plan <- originPlans) {
+      plans.append(plan)
+    }
+    while(plans.size > 1) {
+      val plan1 = plans.remove(0)
+      val plan2 = plans.remove(0)
+      plans.append(prePostProcess(plan1, plan2))
+    }
+    plans(0)
+  }
+
   def prePostProcess(plan1: LogicalPlan, plan2: LogicalPlan): LogicalPlan = {
     var catalogRelationMap1 = new scala.collection.mutable.HashMap[String, ArrayBuffer[Long]]
     var catalogRelationMap2 = new scala.collection.mutable.HashMap[String, ArrayBuffer[Long]]
@@ -89,12 +102,12 @@ case class MergePlan() {
     if (plan1.getClass == classOf[Aggregate] && plan2.getClass == classOf[Aggregate]) {
       val aggregate1 = plan1.asInstanceOf[Aggregate]
       val aggregate2 = plan2.asInstanceOf[Aggregate]
-      val aggregateList = Seq.concat(aggregate1.aggregateExpressions, aggregate2.aggregateExpressions).distinct
+      val aggregateList = Seq.concat(aggregate1.aggregateExpressions, aggregate2.aggregateExpressions).groupBy(_.exprId.id).map(_._2.head).toList
       aggregate1.copy(aggregateExpressions = aggregateList, child = mergeTwoPlans(aggregate1.child, aggregate2.child))
     } else if (plan1.getClass == classOf[Project] && plan2.getClass == classOf[Project]) {
       val project1 = plan1.asInstanceOf[Project]
       val project2 = plan2.asInstanceOf[Project]
-      val projectSeq = Seq.concat(project1.projectList, project2.projectList)
+      val projectSeq = Seq.concat(project1.projectList, project2.projectList).groupBy(_.exprId.id).map(_._2.head).toList
       project1.copy(projectList = projectSeq, child = mergeTwoPlans(project1.child, project2.child))
     } else if (plan1.getClass == classOf[Join] && plan2.getClass == classOf[Join]) {
       //join，个人认为应该condition一样，type一样
