@@ -104,11 +104,19 @@ case class MergePlan() {
       val aggregate2 = plan2.asInstanceOf[Aggregate]
       val aggregateList = Seq.concat(aggregate1.aggregateExpressions, aggregate2.aggregateExpressions).groupBy(_.exprId.id).map(_._2.head).toList
       aggregate1.copy(aggregateExpressions = aggregateList, child = mergeTwoPlans(aggregate1.child, aggregate2.child))
-    } else if (plan1.getClass == classOf[Project] && plan2.getClass == classOf[Project]) {
-      val project1 = plan1.asInstanceOf[Project]
-      val project2 = plan2.asInstanceOf[Project]
-      val projectSeq = Seq.concat(project1.projectList, project2.projectList).groupBy(_.exprId.id).map(_._2.head).toList
-      project1.copy(projectList = projectSeq, child = mergeTwoPlans(project1.child, project2.child))
+    } else if (plan1.getClass == classOf[Project] || plan2.getClass == classOf[Project]) {
+      if (plan1.getClass == classOf[Project] && plan2.getClass == classOf[Project]) {
+        val project1 = plan1.asInstanceOf[Project]
+        val project2 = plan2.asInstanceOf[Project]
+        val projectSeq = Seq.concat(project1.projectList, project2.projectList).groupBy(_.exprId.id).map(_._2.head).toList
+        project1.copy(projectList = projectSeq, child = mergeTwoPlans(project1.child, project2.child))
+      } else if(plan1.getClass == classOf[Project]) {
+        val project1 = plan1.asInstanceOf[Project]
+        mergeTwoPlans(project1.child, plan2)
+      } else {
+        val project2 = plan2.asInstanceOf[Project]
+        mergeTwoPlans(plan1, project2.child)
+      }
     } else if (plan1.getClass == classOf[Join] && plan2.getClass == classOf[Join]) {
       //join，个人认为应该condition一样，type一样
       val join1 = plan1.asInstanceOf[Join]
@@ -122,10 +130,10 @@ case class MergePlan() {
         filter1.copy(child = mergeTwoPlans(filter1.child, filter2.child), condition = orCondition)
       } else if(plan1.getClass == classOf[Filter]) {//如果只有一个等一filter，那么保留当前filter，另一个留在原地
         val filter1 = plan1.asInstanceOf[Filter]
-        filter1.copy(child = mergeTwoPlans(filter1.child, plan2), condition = filter1.condition)
+        mergeTwoPlans(filter1.child, plan2)
       } else {
         val filter2 = plan2.asInstanceOf[Filter]
-        filter2.copy(child = mergeTwoPlans(plan1, filter2.child), condition = filter2.condition)
+        mergeTwoPlans(plan1, filter2.child)
       }
     } else if (plan1.getClass == classOf[SubqueryAlias] || plan2.getClass == classOf[SubqueryAlias]) {//SubqueryAlias算子，假设是不算哈希的
       if(plan1.getClass == classOf[SubqueryAlias] && plan2.getClass == classOf[SubqueryAlias]) {//当两个都是subqueryalias，随便选择一个作为别名

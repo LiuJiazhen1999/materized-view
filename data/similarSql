@@ -1,3 +1,2 @@
-select a,b from table2
-select b,c from table2
-select c,d from table2
+select a from table2 where a>3
+select a from table2 where a<2
