@@ -1,29 +1,43 @@
 import org.apache.spark.sql.catalyst.catalog.CatalogRelation
-import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeReference, ExprId, NamedExpression, Or}
+import org.apache.spark.sql.catalyst.expressions.{AttributeReference, Or}
 import org.apache.spark.sql.catalyst.plans.logical.{Aggregate, Filter, GlobalLimit, Join, LocalLimit, LogicalPlan, Project, Sort, SubqueryAlias}
-import org.apache.spark.sql.catalyst.catalog.CatalogTable
 import org.apache.spark.sql.catalyst.expressions.Alias
+import scala.collection.mutable.ArrayBuffer
 
 case class MergePlan() {
-  var catalogRelationMap = new scala.collection.mutable.HashMap[String, ExprId]
-
   def mergeMultiPlans(plans: Seq[LogicalPlan]): LogicalPlan = {
     plans.apply(0)
   }
 
-  def prePostProcess(originplan1: LogicalPlan, originplan2: LogicalPlan): LogicalPlan = {
-    val plan1 = originplan1
-    val plan2 = originplan2
-    catalogRelationMap.clear()
+  def prePostProcess(plan1: LogicalPlan, plan2: LogicalPlan): LogicalPlan = {
+    var catalogRelationMap1 = new scala.collection.mutable.HashMap[String, ArrayBuffer[Long]]
+    var catalogRelationMap2 = new scala.collection.mutable.HashMap[String, ArrayBuffer[Long]]
     val exprIdPrefix = "ffaabcde"
     var aliasMap = new scala.collection.mutable.HashMap[Long, Long]
     var maxExprId = 0L
-    plan1 transformUp {
+    plan1 transformUp {//遍历第一个plan，获取table列名对应的exprid以及目前已经使用的最大exprid
       case catalogRelation: CatalogRelation => {
         val output1 = catalogRelation.output
         for(value <- output1) {
-          catalogRelationMap.put(value.qualifier.getOrElse("")+value.name, value.exprId)
+          if(catalogRelationMap1.contains(value.qualifier.getOrElse("")+value.name)) {
+            catalogRelationMap1.get(value.qualifier.getOrElse("")+value.name).getOrElse(ArrayBuffer()).append(value.exprId.id)
+          } else {
+            catalogRelationMap1.put(value.qualifier.getOrElse("")+value.name, ArrayBuffer(value.exprId.id))
+          }
           maxExprId = if (maxExprId > value.exprId.id) maxExprId else value.exprId.id
+        }
+        catalogRelation
+      }
+    }
+    plan2 transformUp {//遍历第二个plan，获取table列名对应的exprid以及目前已经使用的最大exprid
+      case catalogRelation: CatalogRelation => {
+        val output2 = catalogRelation.output
+        for(value <- output2) {
+          if(catalogRelationMap2.contains(value.qualifier.getOrElse("")+value.name)) {
+            catalogRelationMap2.get(value.qualifier.getOrElse("")+value.name).getOrElse(ArrayBuffer()).append(value.exprId.id)
+          } else {
+            catalogRelationMap2.put(value.qualifier.getOrElse("")+value.name, ArrayBuffer(value.exprId.id))
+          }
         }
         catalogRelation
       }
@@ -40,7 +54,7 @@ case class MergePlan() {
             if (aliasMap.contains(attributeReference.exprId.id)) {
               attributeReference.withName(exprIdPrefix + aliasMap.get(attributeReference.exprId.id)).withExprId(attributeReference.exprId.copy(id = aliasMap.get(attributeReference.exprId.id).getOrElse(attributeReference.exprId.id)))
             } else {
-              attributeReference.withExprId(catalogRelationMap.get(attributeReference.qualifier.getOrElse("") + attributeReference.name).getOrElse(attributeReference.exprId))
+              attributeReference
             }
         }
       }
@@ -56,8 +70,13 @@ case class MergePlan() {
           case attributeReference: AttributeReference => {
             if (aliasMap.contains(attributeReference.exprId.id)) {
               attributeReference.withName(exprIdPrefix + aliasMap.get(attributeReference.exprId.id)).withExprId(attributeReference.exprId.copy(id = aliasMap.get(attributeReference.exprId.id).getOrElse(attributeReference.exprId.id)))
-            } else {
-              attributeReference.withExprId(catalogRelationMap.get(attributeReference.qualifier.getOrElse("") + attributeReference.name).getOrElse(attributeReference.exprId))
+            } else {//对第二个plan中物理表中列引用的exprId做替换
+              val index = catalogRelationMap2.get(attributeReference.qualifier.getOrElse("") + attributeReference.name).getOrElse(ArrayBuffer()).indexOf(attributeReference.exprId.id)
+              if(index >= 0) {
+                attributeReference.withExprId(attributeReference.exprId.copy(id = catalogRelationMap1.get(attributeReference.qualifier.getOrElse("") + attributeReference.name).getOrElse(ArrayBuffer()).apply(index)))
+              } else {
+                attributeReference
+              }
             }
           }
         }
@@ -148,5 +167,13 @@ case class MergePlan() {
     } else  {
       plan1
     }
+  }
+
+  def test(): Unit = {
+    val map = new scala.collection.mutable.HashMap[String, ArrayBuffer[Long]]
+    map.put("nihao", ArrayBuffer(1))
+    map.get("nihao").getOrElse(ArrayBuffer())
+    val array = ArrayBuffer(1)
+    println(array.indexOf(2))
   }
 }
