@@ -168,12 +168,4 @@ case class MergePlan() {
       plan1
     }
   }
-
-  def test(): Unit = {
-    val map = new scala.collection.mutable.HashMap[String, ArrayBuffer[Long]]
-    map.put("nihao", ArrayBuffer(1))
-    map.get("nihao").getOrElse(ArrayBuffer())
-    val array = ArrayBuffer(1)
-    println(array.indexOf(2))
-  }
 }
