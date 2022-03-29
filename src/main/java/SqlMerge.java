@@ -34,7 +34,7 @@ public class SqlMerge {
 
     public void createTable() {
         SparkSession sparkSession = getSparkSession();
-        sparkSession.sql("create table table2 (a int, b int, c int, d int)");
+        sparkSession.sql("create table Sales (CustomerId Long, Price int, Quantity int, Discount int)");
     }
 
     /**

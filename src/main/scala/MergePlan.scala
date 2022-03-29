@@ -25,7 +25,7 @@ case class MergePlan() {
   def prePostProcess(plan1: LogicalPlan, plan2: LogicalPlan): LogicalPlan = {
     var catalogRelationMap1 = new scala.collection.mutable.HashMap[String, ArrayBuffer[Long]]
     var catalogRelationMap2 = new scala.collection.mutable.HashMap[String, ArrayBuffer[Long]]
-    val exprIdPrefix = "ffaabcde"
+    //val exprIdPrefix = "ffaabcde"
     var aliasMap = new scala.collection.mutable.HashMap[Long, Long]
     var maxExprId = 0L
     plan1 transformUp {//遍历第一个plan，获取table列名对应的exprid以及目前已经使用的最大exprid
@@ -61,11 +61,11 @@ case class MergePlan() {
           case alias: Alias => {
             maxExprId += 1
             aliasMap.put(alias.exprId.id, maxExprId)
-            alias.copy(name = exprIdPrefix+(maxExprId))(exprId = alias.exprId.copy(id = maxExprId), qualifier = alias.qualifier, explicitMetadata = alias.explicitMetadata, isGenerated = alias.isGenerated)
+            alias.copy()(exprId = alias.exprId.copy(id = maxExprId), qualifier = alias.qualifier, explicitMetadata = alias.explicitMetadata, isGenerated = alias.isGenerated)
           }
           case attributeReference: AttributeReference =>
             if (aliasMap.contains(attributeReference.exprId.id)) {
-              attributeReference.withName(exprIdPrefix + aliasMap.get(attributeReference.exprId.id)).withExprId(attributeReference.exprId.copy(id = aliasMap.get(attributeReference.exprId.id).getOrElse(attributeReference.exprId.id)))
+              attributeReference.withExprId(attributeReference.exprId.copy(id = aliasMap.get(attributeReference.exprId.id).getOrElse(attributeReference.exprId.id)))
             } else {
               attributeReference
             }
@@ -78,11 +78,11 @@ case class MergePlan() {
           case alias: Alias => {
             maxExprId += 1
             aliasMap.put(alias.exprId.id, maxExprId)
-            alias.copy(name = exprIdPrefix+(maxExprId))(exprId = alias.exprId.copy(id = maxExprId), qualifier = alias.qualifier, explicitMetadata = alias.explicitMetadata, isGenerated = alias.isGenerated)
+            alias.copy()(exprId = alias.exprId.copy(id = maxExprId), qualifier = alias.qualifier, explicitMetadata = alias.explicitMetadata, isGenerated = alias.isGenerated)
           }
           case attributeReference: AttributeReference => {
             if (aliasMap.contains(attributeReference.exprId.id)) {
-              attributeReference.withName(exprIdPrefix + aliasMap.get(attributeReference.exprId.id)).withExprId(attributeReference.exprId.copy(id = aliasMap.get(attributeReference.exprId.id).getOrElse(attributeReference.exprId.id)))
+              attributeReference.withExprId(attributeReference.exprId.copy(id = aliasMap.get(attributeReference.exprId.id).getOrElse(attributeReference.exprId.id)))
             } else {//对第二个plan中物理表中列引用的exprId做替换
               val index = catalogRelationMap2.get(attributeReference.qualifier.getOrElse("") + attributeReference.name).getOrElse(ArrayBuffer()).indexOf(attributeReference.exprId.id)
               if(index >= 0) {

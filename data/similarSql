@@ -1,2 +1,2 @@
-select a from table2 where a>3
-select a from table2 where a<2
+SELECT AVG(Discount) FROM Sales GROUP BY CustomerId
+SELECT AVG(Price * Quantity) FROM Sales GROUP BY CustomerId
