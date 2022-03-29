@@ -102,13 +102,13 @@ case class MergePlan() {
     if (plan1.getClass == classOf[Aggregate] && plan2.getClass == classOf[Aggregate]) {
       val aggregate1 = plan1.asInstanceOf[Aggregate]
       val aggregate2 = plan2.asInstanceOf[Aggregate]
-      val aggregateList = Seq.concat(aggregate1.aggregateExpressions, aggregate2.aggregateExpressions).groupBy(_.exprId.id).map(_._2.head).toList
+      val aggregateList = Seq.concat(aggregate1.aggregateExpressions, aggregate2.aggregateExpressions).groupBy(_.sql).map(_._2.head).toList
       aggregate1.copy(aggregateExpressions = aggregateList, child = mergeTwoPlans(aggregate1.child, aggregate2.child))
     } else if (plan1.getClass == classOf[Project] || plan2.getClass == classOf[Project]) {
       if (plan1.getClass == classOf[Project] && plan2.getClass == classOf[Project]) {
         val project1 = plan1.asInstanceOf[Project]
         val project2 = plan2.asInstanceOf[Project]
-        val projectSeq = Seq.concat(project1.projectList, project2.projectList).groupBy(_.exprId.id).map(_._2.head).toList
+        val projectSeq = Seq.concat(project1.projectList, project2.projectList).groupBy(_.sql).map(_._2.head).toList
         project1.copy(projectList = projectSeq, child = mergeTwoPlans(project1.child, project2.child))
       } else if(plan1.getClass == classOf[Project]) {
         val project1 = plan1.asInstanceOf[Project]

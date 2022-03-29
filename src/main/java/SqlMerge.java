@@ -50,6 +50,7 @@ public class SqlMerge {
         while((str = bufferedReader.readLine()) != null)
         {
             LogicalPlan logicalPlan = sparkSession.sql(str).queryExecution().analyzed();
+            System.out.println(logicalPlan.prettyJson());
             similarLogicalPlans.add(logicalPlan);
         }
         //close
@@ -65,7 +66,7 @@ public class SqlMerge {
             List<LogicalPlan> logicalPlanList = sqlMerge.getLogicalPlansFromFile(filePath);
             MergePlan mergePlan = new MergePlan();
             LogicalPlan logicalPlan = mergePlan.mergeProcess(JavaConverters.asScalaIteratorConverter(logicalPlanList.iterator()).asScala().toSeq());
-            System.out.println(logicalPlan.prettyJson());
+            //System.out.println(logicalPlan.prettyJson());
             SQLBuilder sqlBuilder = new SQLBuilder(logicalPlan);
             System.out.println(sqlBuilder.toSQL());
             //sqlMerge.mergeLogicPlan(logicalPlanList);

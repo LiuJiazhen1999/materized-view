@@ -1,2 +1,2 @@
-SELECT AVG(Discount) FROM Sales GROUP BY CustomerId
-SELECT AVG(Price * Quantity) FROM Sales GROUP BY CustomerId
+SELECT AVG(Price * Quantity) as a FROM Sales GROUP BY CustomerId
+SELECT AVG(Discount) as a FROM Sales GROUP BY CustomerId
