@@ -99,11 +99,20 @@ case class MergePlan() {
   }
 
   def mergeTwoPlans(plan1: LogicalPlan, plan2: LogicalPlan): LogicalPlan = {
-    if (plan1.getClass == classOf[Aggregate] && plan2.getClass == classOf[Aggregate]) {
-      val aggregate1 = plan1.asInstanceOf[Aggregate]
-      val aggregate2 = plan2.asInstanceOf[Aggregate]
-      val aggregateList = Seq.concat(aggregate1.aggregateExpressions, aggregate2.aggregateExpressions).groupBy(_.sql).map(_._2.head).toList
-      aggregate1.copy(aggregateExpressions = aggregateList, child = mergeTwoPlans(aggregate1.child, aggregate2.child))
+    if (plan1.getClass == classOf[Aggregate] || plan2.getClass == classOf[Aggregate]) {//aggregate的local哈希，只算是否有groupingExpressions，如果有，就是hash(group by)，如果没有，local哈希就没有
+      if (plan1.getClass == classOf[Aggregate] && plan2.getClass == classOf[Aggregate]) {
+        val aggregate1 = plan1.asInstanceOf[Aggregate]
+        val aggregate2 = plan2.asInstanceOf[Aggregate]
+        val aggregateList = Seq.concat(aggregate1.aggregateExpressions, aggregate2.aggregateExpressions).groupBy(_.sql).map(_._2.head).toList
+        val groupList = Seq.concat(aggregate1.groupingExpressions, aggregate2.groupingExpressions).groupBy(_.sql).map(_._2.head).toList
+        aggregate1.copy(aggregateExpressions = aggregateList, groupingExpressions = groupList, child = mergeTwoPlans(aggregate1.child, aggregate2.child))
+      } else if (plan1.isInstanceOf[Aggregate]) {
+        val aggregate1 = plan1.asInstanceOf[Aggregate]
+        mergeTwoPlans(aggregate1.child, plan2)
+      } else {
+        val aggregate2 = plan2.asInstanceOf[Aggregate]
+        mergeTwoPlans(plan1, aggregate2.child)
+      }
     } else if (plan1.getClass == classOf[Project] || plan2.getClass == classOf[Project]) {
       if (plan1.getClass == classOf[Project] && plan2.getClass == classOf[Project]) {
         val project1 = plan1.asInstanceOf[Project]
